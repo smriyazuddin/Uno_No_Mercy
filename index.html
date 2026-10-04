@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UNO No Mercy</title>
+<style>
+:root{--bg:#f4f1ea;--fg:#1a1a1a;--pn:#fff;--bd:#d8d2c4;--ac:#e53935;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15151a;--fg:#eee;--pn:#23232b;--bd:#3a3a46}}
+:root[data-theme="dark"]{--bg:#15151a;--fg:#eee;--pn:#23232b;--bd:#3a3a46}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font:15px system-ui,-apple-system,sans-serif;min-height:100vh}
+#app{max-width:860px;margin:0 auto;padding:14px}
+h1{margin:6px 0 2px;font-size:28px;letter-spacing:1px}h1 b{color:var(--ac)}
+.sub{opacity:.7;margin:0 0 14px}
+.box{background:var(--pn);border:1px solid var(--bd);border-radius:12px;padding:14px;margin:10px 0}
+.box h3{margin:0 0 8px}
+input,select{font:inherit;padding:8px;border-radius:8px;border:1px solid var(--bd);background:var(--bg);color:var(--fg);margin:3px 4px 3px 0}
+button{font:inherit;font-weight:600;padding:9px 14px;border:0;border-radius:8px;background:var(--ac);color:#fff;cursor:pointer;margin:3px 4px 3px 0}
+button.g{background:var(--bd);color:var(--fg)}button:disabled{opacity:.4;cursor:default}
+.code{font-size:40px;font-weight:800;letter-spacing:8px}
+.pls{display:flex;gap:8px;flex-wrap:wrap}
+.pl{background:var(--pn);border:2px solid var(--bd);border-radius:10px;padding:6px 10px;min-width:92px;font-size:13px}
+.pl span{display:block;opacity:.75}.pl.on{border-color:var(--ac);box-shadow:0 0 0 2px var(--ac)}.pl.out{opacity:.35}.pl.warn span{color:var(--ac);font-weight:700;opacity:1}
+.mid{display:flex;align-items:center;justify-content:center;gap:22px;margin:18px 0;flex-wrap:wrap}
+.cd{width:62px;height:92px;border-radius:9px;border:3px solid #fff;color:var(--k);display:flex;align-items:center;justify-content:center;font-weight:900;font-style:italic;font-size:22px;text-shadow:1px 1px 0 #000;box-shadow:0 2px 6px #0004;flex:none;user-select:none;position:relative;overflow:hidden}.cd::before{content:'';position:absolute;width:78%;height:96%;border-radius:50%;background:#fff;transform:rotate(28deg)}.cd>*{position:relative}
+.cd.big{width:84px;height:124px;font-size:30px}.cd small{position:absolute;top:3px;left:5px;font-size:11px;color:#fff;text-shadow:1px 1px 0 #000}
+.cd.back{background:#111;color:#fff;font-size:14px;text-shadow:none}.cd.back::before{background:#ed1c24}
+.cd.wild{background:#111;--k:#fff}.cd.wild::before{background:conic-gradient(#ed1c24 0 25%,#ffde00 0 50%,#50aa44 0 75%,#0956bf 0);transform:rotate(28deg)}
+.hand{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:10px 0}
+.hand .cd{cursor:pointer;opacity:.4}.hand .cd.pl2{opacity:1;transform:translateY(-6px)}
+.dot{width:26px;height:26px;border-radius:50%;border:3px solid var(--fg);display:inline-block;vertical-align:middle}
+.st{text-align:center;font-weight:700;margin:6px 0}.lg{text-align:center;font-size:13px;opacity:.75;min-height:56px}
+.ov{position:fixed;inset:0;background:#000a;display:flex;align-items:center;justify-content:center;z-index:9}
+.ov .box{text-align:center;max-width:320px}
+.cc{width:64px;height:64px;border-radius:12px;border:0;margin:5px;font-size:0}
+details{font-size:13px;opacity:.85}details li{margin:3px 0}
+</style><script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script></head><body><div id="app"></div>
+<script>
+const $=s=>document.querySelector(s),esc=s=>String(s).replace(/[<>&"]/g,'');
+const COL={R:'#ed1c24',Y:'#ffde00',G:'#50aa44',B:'#0956bf'},CN={R:'Red',Y:'Yellow',G:'Green',B:'Blue'};
+const LBL={S:'⊘',SE:'⊘ALL',RV:'⇄',D2:'+2',D4:'+4',DA:'ALL',WR4:'⇄+4',D6:'+6',D10:'+10',CR:'🎨'};
+const DV={D2:2,D4:4,WR4:4,D6:6,D10:10},BN=['Bot Ana','Bot Ben','Bot Cy','Bot Dee','Bot Eli'];
+let room=null,online=false,isHost=false,code='',me=Math.random().toString(36).slice(2,8),myName='',G=null,lobby=null,view='menu',pick=null,hv=0,lastv=0,bt=null;
+
+// ---------- engine (runs on the host only) ----------
+function shuf(a){for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function mkDeck(){const d=[];let n=0;const add=(c,v,k)=>{for(let i=0;i<k;i++)d.push({c,v,id:n++})};
+for(const c of 'RYGB'){for(let v=0;v<=9;v++)add(c,''+v,2);add(c,'S',3);add(c,'SE',2);add(c,'RV',3);add(c,'D2',3);add(c,'D4',3);add(c,'DA',3)}
+add('W','WR4',4);add('W','D6',4);add('W','D10',4);add('W','CR',8);return shuf(d)}
+const alive=G=>G.out.filter(o=>!o).length;
+const lg=(G,m)=>{G.log.push(m);if(G.log.length>4)G.log.shift()};
+const nice=c=>c.c==='W'?LBL[c.v]+' Wild':CN[c.c]+' '+(LBL[c.v]||c.v);
+function newGame(P,r70){const G={P,r70,deck:mkDeck(),disc:[],hands:P.map(()=>[]),turn:0,dir:1,color:'R',pend:0,out:P.map(()=>false),win:-1,log:['Game on! 168-card No Mercy deck.']};
+for(let i=0;i<7;i++)G.hands.forEach(h=>h.push(G.deck.pop()));
+let t;for(;;){t=G.deck.pop();if(t.c==='W')G.deck.unshift(t);else break}
+G.disc.push(t);G.color=t.c;G.turn=Math.random()*P.length|0;return G}
+function nx(G,i,s=1){for(let k=0;k<s;k++){do i=(i+G.dir+G.P.length)%G.P.length;while(G.out[i])}return i}
+function chk(G,i){if(!G.out[i]&&G.hands[i].length>=25){G.out[i]=true;G.deck.unshift(...G.hands[i]);G.hands[i]=[];lg(G,G.P[i].n+' hit 25 cards: ELIMINATED (mercy rule)')}}
+function dr(G,i,n){let k=0;while(k<n&&!G.out[i]){if(!G.deck.length){const t=G.disc.pop();G.deck=shuf(G.disc);G.disc=[t];if(!G.deck.length)break}G.hands[i].push(G.deck.pop());k++;chk(G,i)}return k}
+function ok(G,c){const t=G.disc[G.disc.length-1];if(G.pend)return DV[c.v]>=G.pend;return c.c==='W'||c.c===G.color||c.v===t.v}
+function endchk(G){if(G.win<0&&alive(G)===1)G.win=G.out.indexOf(false);G.hands.forEach((_,k)=>chk(G,k))}
+function play(G,i,cid,o){const x=G.hands[i].findIndex(c=>c.id===cid);if(x<0||G.turn!==i||G.win>=0)return;const c=G.hands[i][x];if(!ok(G,c))return;
+if(c.c==='W'&&!('RYGB'.includes(o.color||'-')))return;
+G.hands[i].splice(x,1);G.disc.push(c);G.color=c.c==='W'?o.color:c.c;
+let m=G.P[i].n+' played '+nice(c)+(c.c==='W'?' → '+CN[G.color]:''),skip=0,again=false;const v=c.v;
+if(v==='DA'){const s=G.hands[i].filter(z=>z.c===c.c);G.hands[i]=G.hands[i].filter(z=>z.c!==c.c);G.disc.pop();G.disc.push(...s,c);m+=' (dumped '+(s.length+1)+')'}
+if(v==='RV'||v==='WR4'){G.dir*=-1;if(v==='RV'&&alive(G)===2)skip=1}
+if(v==='S')skip=1;
+if(v==='SE'){again=true}
+if(DV[v])G.pend+=DV[v];
+if(v==='CR'){const j=nx(G,i);let n=0;while(n<80){if(!dr(G,j,1))break;n++;if(G.out[j]||G.hands[j][G.hands[j].length-1].c===G.color)break}m+=' — '+G.P[j].n+' drew '+n+' & is skipped';skip=1}
+if(G.r70&&v==='7'&&o.target!=null&&o.target!==i&&G.hands[o.target]&&!G.out[o.target]){[G.hands[i],G.hands[o.target]]=[G.hands[o.target],G.hands[i]];m+=' (swapped with '+G.P[o.target].n+')'}
+if(G.r70&&v==='0'){const a=[];let k=i;do{a.push(k);k=nx(G,k)}while(k!==i);const hs=a.map(z=>G.hands[z]);a.forEach((z,q)=>G.hands[a[(q+1)%a.length]]=hs[q]);m+=' (hands rotated)'}
+lg(G,m);
+if(!G.out[i]&&G.hands[i].length===0){G.win=i;lg(G,G.P[i].n+' wins!');return}
+if(G.hands[i].length===1)lg(G,'🔔 '+G.P[i].n+' says UNO!');
+G.turn=nx(G,i,again?0:1+skip)}
+function take(G,i){if(G.turn!==i||G.win>=0)return;
+if(G.pend){const n=G.pend;dr(G,i,n);G.pend=0;lg(G,G.P[i].n+' drew '+n+' (penalty)')}
+else{if(G.hands[i].some(c=>ok(G,c)))return;let n=0;while(n<80){if(!dr(G,i,1)||G.out[i])break;n++;if(ok(G,G.hands[i][G.hands[i].length-1]))break}lg(G,G.P[i].n+' drew '+n+' card'+(n==1?'':'s'));if(!G.out[i]&&G.hands[i].some(c=>ok(G,c)))return}
+endchk(G);if(G.win<0)G.turn=nx(G,i)}
+function bot(G){const i=G.turn,h=G.hands[i],pl=h.filter(c=>ok(G,c));if(!pl.length){take(G,i);return}
+const cnt={};h.forEach(c=>cnt[c.c]=(cnt[c.c]||0)+1);
+const sc=c=>c.c==='W'?(h.length<=3?9:0):10+(DV[c.v]?3:0)+(c.v==='DA'?2+cnt[c.c]:0)+cnt[c.c];
+let c;if(G.pend)c=pl.sort((a,b)=>DV[a.v]-DV[b.v])[0];else c=pl.sort((a,b)=>sc(b)-sc(a))[0];
+const k={};h.forEach(z=>{if(z.c!=='W'&&z.id!==c.id)k[z.c]=(k[z.c]||0)+1});const ks=Object.keys(k).sort((a,b)=>k[b]-k[a]);
+const color=ks[0]||'RYGB'[Math.random()*4|0];
+const oth=G.P.map((_,j)=>j).filter(j=>j!==i&&!G.out[j]).sort((a,b)=>G.hands[a].length-G.hands[b].length);
+play(G,i,c.id,{color,target:oth[0]});endchk(G)}
+
+// ---------- networking ----------
+function cast(){if(!online||!room||!isHost)return;hv++;room.emit('s',{code,v:hv,L:lobby,G}).catch(()=>{})}
+function localRoom(){if(typeof Peer==='undefined')return Promise.resolve(null);
+const h={};let peer=null,conns=[],hc=null,q=[],asHost=false;
+const fire=m=>(h[m.t]||[]).forEach(f=>f({data:m.d,isMe:false}));
+return Promise.resolve({
+emit:(t,d)=>{const m={t,d};if(asHost)conns.forEach(c=>c.open&&c.send(m));else if(hc&&hc.open)hc.send(m);else q.push(m);return Promise.resolve()},
+on:(t,f)=>{(h[t]=h[t]||[]).push(f);return()=>{}},
+close(){if(peer)peer.destroy();peer=null},
+open(code,host){this.close();conns=[];hc=null;q=[];asHost=host;peer=host?new Peer('unonm-'+code):new Peer();
+peer.on('error',e=>alert(e.type==='unavailable-id'?'Code already in use. Create the room again.':e.type==='peer-unavailable'?'Room not found. Check the code and that the host is online.':'Connection error: '+e.type));
+if(host)peer.on('connection',c=>{conns.push(c);c.on('data',fire);c.on('close',()=>{conns=conns.filter(x=>x!==c)})});
+else peer.on('open',()=>{hc=peer.connect('unonm-'+code,{serialization:'json'});hc.on('open',()=>{q.splice(0).forEach(m=>hc.send(m))});hc.on('data',fire)})}})}
+function setupNet(){(window.claude&&claude.use?claude.use('room'):localRoom()).then(r=>{room=r;if(!r)return;if(view==='menu')render();
+r.on('j',m=>{const d=m.data;if(m.isMe||!isHost||!online||!lobby||!d||d.code!==code)return;
+if(!lobby.p.some(p=>p.id===d.id)&&lobby.p.length<lobby.seats&&!G)lobby.p.push({n:esc(d.n||'Player').slice(0,12),id:d.id,b:false});cast();if(view==='lobby')render()});
+r.on('a',m=>{const d=m.data;if(m.isMe||!isHost||!G||!d||d.code!==code)return;doA(d)});
+r.on('s',m=>{const d=m.data;if(m.isMe||isHost||!d||d.code!==code||d.v<=lastv)return;lastv=d.v;lobby=d.L;G=d.G;if(G){if(G.win<0||view!=='game')pick=pick&&G.turn===seat()?pick:null;view='game'}render()})
+}).catch(()=>{});setInterval(()=>{if(isHost&&online&&view!=='menu')cast()},4000)}
+const seat=()=>G?G.P.findIndex(p=>p.id===me):-1;
+function send(a){a.id=me;a.code=code;if(isHost)doA(a);else if(room)room.emit('a',a).catch(()=>{})}
+function doA(a){const i=G.P.findIndex(p=>p.id===a.id);if(i<0)return;if(a.t==='play')play(G,i,a.cid,a);else take(G,i);endchk(G);cast();render();botTick()}
+function botTick(){clearTimeout(bt);if(!isHost||!G||G.win>=0||!G.P[G.turn].b)return;
+bt=setTimeout(()=>{if(G&&G.win<0&&G.P[G.turn].b){bot(G);cast();render();botTick()}},1000)}
+function startG(P,r70){G=newGame(P,r70);view='game';pick=null;cast();render();botTick()}
+
+// ---------- UI ----------
+function card(c,cls='',attr=''){return `<div class="cd ${c.c==='W'?'wild':''} ${cls}" style="${c.c==='W'?'':'background:'+COL[c.c]+';--k:'+COL[c.c]}" ${attr}><small>${LBL[c.v]||c.v}</small><span>${LBL[c.v]||c.v}</span></div>`}
+function render(){const A=$('#app');
+if(view==='menu'){A.innerHTML=`<h1>UNO <b>No Mercy</b></h1><p class="sub">168 cards · stacking draws · 25-card mercy limit</p>
+<div class="box"><h3>Your name</h3><input id="nm" maxlength="12" value="${esc(myName||'Player')}"></div>
+<div class="box"><h3>Rules</h3><label><input type="checkbox" id="r70" checked> 7-0 rule (7 swaps hands, 0 rotates hands)</label></div>
+<div class="box"><h3>Play vs bots</h3>Bots: <select id="nb"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option></select><button data-a="solo">Start</button></div>
+<div class="box"><h3>Play online with friends (human vs human, bots fill empty seats)</h3>${room?'':'<p class="sub">Online play needs internet access to load PeerJS. Bots work anywhere.</p>'}
+Seats: <select id="ns"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select><button data-a="host" ${room?'':'disabled'}>Create room</button><br>
+<input id="jc" placeholder="Room code" size="8" style="text-transform:uppercase"><button class="g" data-a="join" ${room?'':'disabled'}>Join room</button></div>
+<details class="box"><summary>No Mercy rules used</summary><ul>
+<li>Each player starts with 7. Match the top card by color, number or symbol; Wilds always playable.</li>
+<li>No playable card? Draw until you get one, then play it.</li>
+<li><b>Stacking:</b> answer +2/+4/+6/+10 with an equal or bigger draw card, else draw the whole stack and lose your turn.</li>
+<li><b>Mercy:</b> reach 25 cards and you're out.</li>
+<li><b>Skip Everyone:</b> you play again. <b>Discard All:</b> dump every card of that color. <b>Colored +4</b> exists.</li>
+<li><b>Wild Reverse +4</b>, <b>Wild +6</b>, <b>Wild +10</b>, <b>Color Roulette</b> (next player draws until the chosen color, then is skipped).</li>
+<li>First to empty their hand wins. UNO is called automatically.</li></ul></details>`;return}
+if(view==='lobby'){const L=lobby;A.innerHTML=`<h1>UNO <b>No Mercy</b></h1><div class="box" style="text-align:center"><p class="sub">Room code (share the page link + this code)</p><div class="code">${esc(code)}</div>
+${L?`<p>Players ${L.p.length}/${L.seats}: <b>${L.p.map(p=>esc(p.n)).join(', ')}</b></p><p class="sub">Empty seats become bots · 7-0 rule ${L.r70?'on':'off'}</p>`:'<p>Waiting for host…</p>'}
+${isHost?'<button data-a="start">Start game</button>':''}<button class="g" data-a="menu">Leave</button></div>`;return}
+const s=seat(),mine=s>=0?G.hands[s]:[],my=G.turn===s&&G.win<0,top=G.disc[G.disc.length-1];
+const can=my&&mine.some(c=>ok(G,c));
+let h=`<div class="pls">${G.P.map((p,i)=>`<div class="pl ${i===G.turn&&G.win<0?'on':''} ${G.out[i]?'out':''} ${G.hands[i].length>=18?'warn':''}"><b>${esc(p.n)}${i===s?' (you)':''}${p.b?' 🤖':''}</b><span>${G.out[i]?'💀 out':G.hands[i].length+' cards'}</span></div>`).join('')}</div>
+<div class="mid"><div class="cd back big"><span>DRAW<br>${G.deck.length}</span></div>${card(top,'big')}<div><span class="dot" style="background:${COL[G.color]}"></span> ${CN[G.color]}<br>Direction ${G.dir>0?'↻':'↺'}${G.pend?`<br><b style="color:var(--ac)">Stack: +${G.pend}</b>`:''}</div></div>
+<div class="st">${G.win>=0?'🏆 '+esc(G.P[G.win].n)+' wins!':my?(G.pend?`Your turn: stack a bigger/equal draw or take ${G.pend}`:'Your turn'):esc(G.P[G.turn].n)+"'s turn…"}</div>
+`;
+if(s<0)h+='<p class="st">You are spectating.</p>';
+else{const srt=[...mine].sort((a,b)=>a.c.localeCompare(b.c)||a.v.localeCompare(b.v));
+h+=`<div class="hand">${srt.map(c=>card(c,my&&ok(G,c)?'pl2':'',`data-a="card" data-v="${c.id}"`)).join('')}</div>
+<div class="st"><button data-a="draw" ${my&&(G.pend||!can)?'':'disabled'}>${G.pend?'Take '+G.pend:'Draw'+(my&&!can?' until playable':'')}</button><button class="g" data-a="menu">Quit</button></div>`}
+if(G.win>=0&&isHost)h+='<div class="st"><button data-a="again">Play again</button></div>';
+if(pick){h+=`<div class="ov"><div class="box">${pick.k==='c'?'<h3>Choose a color</h3>'+Object.keys(COL).map(k=>`<button class="cc" style="background:${COL[k]}" data-a="col" data-v="${k}">${k}</button>`).join(''):'<h3>Swap hands with…</h3>'+G.P.map((p,i)=>i!==s&&!G.out[i]?`<button data-a="tgt" data-v="${i}">${esc(p.n)} (${G.hands[i].length})</button>`:'').join('')}<br><button class="g" data-a="x">Cancel</button></div></div>`}
+A.innerHTML=h}
+document.addEventListener('click',e=>{const t=e.target.closest('[data-a]');if(!t)return;const a=t.dataset.a,v=t.dataset.v;
+const nm=()=>{myName=esc(($('#nm')||{}).value||myName||'Player').slice(0,12)||'Player'};
+if(a==='solo'){nm();const P=[{n:myName,id:me,b:false}];for(let i=0;i<+$('#nb').value;i++)P.push({n:BN[i],id:'b'+i,b:true});online=false;isHost=true;code='';startG(P,$('#r70').checked)}
+else if(a==='host'){nm();code=Math.random().toString(36).slice(2,6).toUpperCase();isHost=true;online=true;room.open&&room.open(code,true);G=null;lobby={seats:+$('#ns').value,r70:$('#r70').checked,p:[{n:myName,id:me,b:false}]};view='lobby';cast();render()}
+else if(a==='join'){nm();code=$('#jc').value.trim().toUpperCase();if(!code)return;isHost=false;online=true;room.open&&room.open(code,false);G=null;lobby=null;lastv=0;view='lobby';room.emit('j',{code,id:me,n:myName}).catch(()=>{});render()}
+else if(a==='start'){const P=lobby.p.slice();let k=0;while(P.length<lobby.seats)P.push({n:BN[k],id:'b'+k++,b:true});startG(P,lobby.r70)}
+else if(a==='again')startG(G.P,G.r70);
+else if(a==='draw')send({t:'take'});
+else if(a==='card'){const s=seat();if(!G||G.turn!==s||G.win>=0)return;const c=G.hands[s].find(x=>x.id===+v);if(!c||!ok(G,c))return;
+if(c.c==='W'){pick={cid:c.id,k:'c'};render()}else if(G.r70&&c.v==='7'){pick={cid:c.id,k:'t'};render()}else send({t:'play',cid:c.id})}
+else if(a==='col'){const p=pick;pick=null;send({t:'play',cid:p.cid,color:v})}
+else if(a==='tgt'){const p=pick;pick=null;send({t:'play',cid:p.cid,target:+v})}
+else if(a==='x'){pick=null;render()}
+else if(a==='menu'){clearTimeout(bt);room&&room.close&&room.close();G=null;lobby=null;view='menu';isHost=false;online=false;pick=null;render()}});
+render();setupNet();
+</script></body></html>
